@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-    data := []byte("5:spam")
+    data := []byte("d3:foo3:bar5:helloi52ee")
 
     decoded, err := bencode.Decode(data)
     if err != nil {

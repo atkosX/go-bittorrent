@@ -35,8 +35,6 @@ func decodeValue(reader *bufio.Reader) (Bvalue, error) {
     }
 }
 
-
-
 func decodeString(reader *bufio.Reader) (Bvalue, error){
 
     strLen:=[]byte{}
@@ -72,13 +70,87 @@ func decodeString(reader *bufio.Reader) (Bvalue, error){
 
 
 func decodeInteger(reader *bufio.Reader) (Bvalue, error) {
-    return nil, nil
+    if _, err := reader.ReadByte(); err != nil {
+        return nil, err
+    }
+    intStr := []byte{}
+    for {
+        b, err := reader.ReadByte()
+        if err != nil {
+            return nil, err
+        }
+        if b == 'e' {
+            break
+        }
+        intStr = append(intStr, b)
+    }
+    value, err := strconv.Atoi(string(intStr))
+    if err != nil {
+        return nil, err
+    }
+    return value, nil
 }
 
 func decodeList(reader *bufio.Reader) (Bvalue, error) {
-    return nil, nil
+    if _,err:= reader.ReadByte(); err != nil {
+        return nil, err
+    }
+    list:=[]Bvalue{}
+    for {
+        b,err:=reader.Peek(1)
+        if err != nil {
+            return nil, err
+        }
+        if b[0] == 'e' {
+            _, err := reader.ReadByte()
+            if err != nil {
+                return nil, err
+            }
+            break
+        }
+        value, err := decodeValue(reader)
+        if err != nil {
+            return nil, err
+        }
+        list = append(list, value)
+    }
+    return list, nil
 }
 
 func decodeDict(reader *bufio.Reader) (Bvalue, error) {
-    return nil, nil
+	if _, err := reader.ReadByte(); err != nil {
+		return nil, err
+	}
+	dict := make(map[string]Bvalue)
+	for {
+		b, err := reader.Peek(1)
+		if err != nil {
+			return nil, err
+		}
+		if b[0] == 'e' {
+			_, err := reader.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
+
+		key, err := decodeString(reader)
+		if err != nil {
+			return nil, err
+		}
+
+		keyStr, ok := key.(string)
+		if !ok {
+			return nil, errors.New("key is not a string")
+		}
+
+		value, err := decodeValue(reader)
+		if err != nil {
+			return nil, err
+		}
+		dict[keyStr] = value
+	}
+	return dict, nil
 }
+
