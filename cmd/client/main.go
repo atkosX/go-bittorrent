@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/atkosX/go-bittorrent/internal/utils/parser"
+	"github.com/atkosX/go-bittorrent/internal/parser"
 )
 
 func main() {
