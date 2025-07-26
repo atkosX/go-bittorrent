@@ -35,37 +35,34 @@ func decodeValue(reader *bufio.Reader) (Bvalue, error) {
     }
 }
 
-func decodeString(reader *bufio.Reader) (Bvalue, error){
+func decodeString(reader *bufio.Reader) (Bvalue, error) {
+	strLen := []byte{}
+	for {
+		b, err := reader.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if b == ':' {
+			break
+		}
+		if b >= '0' && b <= '9' {
+			strLen = append(strLen, b)
+		} else {
+			return nil, errors.New("invalid character in string length")
+		}
+	}
 
-    strLen:=[]byte{}
-    for{
-        b,err:=reader.ReadByte()
-        if err != nil {
-            return nil, err
-        }
-        if b==':'{
-            break
-        }
-        if b >= '0' && b <= '9' {
-            strLen = append(strLen, b)
-        } else if b == ':' {
-            break
-        } else {
-            return nil, errors.New("invalid character in string length")
-        }
-    }
+	length, err := strconv.Atoi(string(strLen))
+	if err != nil {
+		return nil, err
+	}
 
-    length, err := strconv.Atoi(string(strLen))
-    if err != nil {
-        return nil, err
-    }
-
-    buf:=make([]byte,length)
-    _,err=io.ReadFull(reader,buf)
-    if err != nil {
-        return nil, err
-    }
-    return string(buf), nil
+	buf := make([]byte, length)
+	_, err = io.ReadFull(reader, buf)
+	if err != nil {
+		return nil, err
+	}
+	return string(buf), nil
 }
 
 
@@ -152,5 +149,59 @@ func decodeDict(reader *bufio.Reader) (Bvalue, error) {
 		dict[keyStr] = value
 	}
 	return dict, nil
+}
+
+func Encode(writer io.Writer, data Bvalue) error {
+	switch v := data.(type) {
+	case int:
+		return encodeInteger(writer, v)
+	case string:
+		return encodeString(writer, v)
+	case []Bvalue:
+		return encodeList(writer, v)
+	case map[string]Bvalue:
+		return encodeDict(writer, v)
+	default:
+		return errors.New("unsupported type for encoding")
+	}
+}
+
+func encodeInteger(writer io.Writer, value int) error {
+	_, err := writer.Write([]byte("i" + strconv.Itoa(value) + "e"))
+	return err
+}
+
+func encodeString(writer io.Writer, value string) error {
+	_, err := writer.Write([]byte(strconv.Itoa(len(value)) + ":" + value))
+	return err
+}
+
+func encodeList(writer io.Writer, list []Bvalue) error {
+	if _, err := writer.Write([]byte("l")); err != nil {
+		return err
+	}
+	for _, item := range list {
+		if err := Encode(writer, item); err != nil {
+			return err
+		}
+	}
+	_, err := writer.Write([]byte("e"))
+	return err
+}
+
+func encodeDict(writer io.Writer, dict map[string]Bvalue) error {
+	if _, err := writer.Write([]byte("d")); err != nil {
+		return err
+	}
+	for key, value := range dict {
+		if err := encodeString(writer, key); err != nil {
+			return err
+		}
+		if err := Encode(writer, value); err != nil {
+			return err
+		}
+	}
+	_, err := writer.Write([]byte("e"))
+	return err
 }
 
